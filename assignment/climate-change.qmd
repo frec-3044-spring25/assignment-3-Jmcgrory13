@@ -1,6 +1,6 @@
 ---
 title: "Climate Change Module"
-author: 'Add name'
+author: 'Joe McGrory'
 format:
   html:
     embed-resources: true
@@ -44,13 +44,26 @@ ggplot(co2, aes(x = decimal_date, y = monthly_average)) +
 Describe the overall trend in the CO2 data.
 
 **Answer 1:**
+The CO2 is following a linear upward trend. As the year increases, the CO2 concentration is also increasing.
+
 
 **Question 2:**
 
 How does CO2 vary within a year?  What month is it at max?  Min?  What might explain this sub-annual pattern? (you will need to write code and make a plot to answer this question)
 
-**Answer 2:**
+```{r}
 
+co2_2024 <- co2 |> 
+  filter(year == 2024)
+
+ggplot(co2_2024, aes(x = month, y = monthly_average)) + 
+  geom_line() +
+  labs(x = "Month", y = "CO2 concentration (ppm)",
+       title = "CO2 Concentration Changes Throughout 2024")
+
+```
+**Answer 2:**
+Throughout the example year of 2024, CO2 concentrations peak in month 5-6 (may-june), and they hit their min in month 9 (September). This trend is likely due to plant hybernation cycles. In the winter months, plants do not have leaves and thus are not intaking CO2, but after they bloom and have flowers, they intake CO2 until fall. 
 
 
 ## Global Temperature Data
@@ -70,7 +83,7 @@ Describe the data set to the best of your ability, given the documentation provi
 - What is the difference between "global temperature" and "global temperature anomaly"? 
 
 **Answer 3:**
-
+This data is from NASA, and the dataset has 3 columns to it. The columns are the year, the temperature anomoly (C), and the locally weighted smoothing value (C). Global temperature is the actual temperature, whereas the temperature anomaly is the difference between the global temp and the long term average temp.
 
 **Question 4:**
 
@@ -79,12 +92,26 @@ Construct the necessary R code to import and prepare for plotting the following 
 You'll need to determine the file's delimiter and any comments or skips. You will also need to be sure that you have column names. You will not directly use the code above to read the CO2 data, but that code provides helpful tips for reading the data.
 
 **Answer 4:**
+```{r}
+temps <-  read_table("https://data.giss.nasa.gov/gistemp/graphs/graph_data/Global_Mean_Estimates_based_on_Land_and_Ocean_Data/graph.txt",
+                     skip = 5,
+                     col_names = c("year", "anomoly", "smoothing"))
+```
 
 **Question 5:**
 
 Plot the trend in global mean temperatures over time.  Describe what you see in the plot and how you interpret the patterns you observe.
 
 **Answer 5:**
+```{r}
+ggplot(temps, aes(x = year, y = anomoly)) + 
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Temperature Anomoly (C)",
+       title = "Global Temperature Anomoly")
+```
+It seems as a trend, global temperatures have generally been rising since around 1920 (during the early industrial revolution). They spike throughout years but are in an upwards pattern throughout. The spikes throughout are likely due to different weather patterns throughout each year.
+
 
 ## Evaluating the evidence for a "Pause" in warming?
 
@@ -98,24 +125,55 @@ Use a search engine (e.g., Google) or a chat LLM to find out how to calculate a 
 
 **Answer 6:**
 
+I googled "how to calculate rolling average in r", from this I used the website "GeeksForGeeks". From this, I did not have to modify the code very much, other than changing variable names and the general structure.
+
 **Question 7:**
 
 - What is the meaning of "5-year average" vs. "annual average"?
 - Create a data frame from the annual temperature anomaly data (from Question 4) with three new columns: 5-year running averages, 10-year running averages, and 20-year running averages.
 
 **Answer 7:**
+```{r}
+library(zoo)
+
+rolling_temps <- temps |> 
+  mutate(average_5year = rollmean(temps$anomoly, k = 5, fill = NA, align = 'right'),
+         average_10year = rollmean(temps$anomoly, k = 10, fill = NA, align = 'right'),
+         average_20year = rollmean(temps$anomoly, k = 20, fill = NA, align = 'right'))
+```
+
+A 5-year average takes all the values from 5 years and averages them to one value, whereas an annual average only takes one year into account when averaging.
+
 
 **Question 8:**
 
 Plot the different averages on the *same plot* and describe what differences you see and why.  
 
 **Answer 8:**
+The larger the rolling value is, the 'smoother' the line is. It averages out outlier years even more because it is using a larger set of data to average. With that however, it does decrease the temperature anomoly with higher rolling values as each of those years is averaging with lower temperature years. For longer spikes in anomoly, the peak reaction is generally delayed with a higher rolling average value also.
+
+```{r}
+rolling_temps_long <- rolling_temps |> 
+  select(year, average_5year, average_10year, average_20year) |> 
+  pivot_longer(cols = -year, names_to = "AverageVal", values_to = "Temps")
+
+ggplot(rolling_temps_long, aes(x = year, y = Temps, color = AverageVal)) + 
+  geom_line() +
+  labs(x = "Year", y = "Temperature Anomoly (C)",
+       title = "Global Temperature Anomoly Running Averages") +
+  scale_color_discrete(name = "Rolling Average Span",
+                       limits = c("average_5year", "average_10year", "average_20year"),
+                       labels = c("5 years", "10 years", "20 years"))
+```
+
 
 **Question 9:**
 
 By examining the data here, what evidence do you find or not find for such a pause? 
 
 **Answer 9:**
+From this data, the 5 year rolling average did indicate a pause shortly after the year 2000. However in the 10 and 20 year averages, the pause did not exist at all, which makes sense as the pause was a very short period of time which can likely be explained from global weather events. There were plently of other 'pause' events when observing the 5 year averages, but the 10 and 20 year averages do not indicate any of them.
+
 
 ## Longer term trends in CO2 Records
 
@@ -156,17 +214,45 @@ Your answer to Question 10 is going to be a mix of code chunks and text that you
 - Describe your conclusions to the question "How do recent atmospheric CO2 levels compare to historical levels?" using your plot as supporting evidence.   
 
 **Answer 10:**
+The columns are the depth in meters, the age of the Ice (years before present time), the age of the trapped air (years before present), and the CO2 concentration (ppmv). The age of the air is different than ice as air is only trapped once it reaches roughly 90m below surface.
+The temporal resolution of this data is roughly 1000 years between each value, but it does vary throughout.
 
 ```{r}
+vostok <-  read_table("https://data.ess-dive.lbl.gov/catalog/d1/mn/v2/object/ess-dive-457358fdc81d3a5-20180726T203952542",
+                     skip = 21,
+                     col_names = c("Depth", "Ice_Age", "Air_Age", "CO2"))
 
+vostok <- vostok |> 
+  mutate(cal_year_k = (2024 - Air_Age) / 1000) |>
+  arrange(cal_year_k)
+
+vostok |> 
+  ggplot(aes(x = cal_year_k, y = CO2)) +
+  geom_line() +
+  labs(x = "Calendar Year (in 1000s of years)", y = "CO2 Levels (ppm)",
+       title = "CO2 levels found in air trapped in ice")
+
+co2 <-mutate(co2, cal_year_k = year / 1000)
+co2 <- rename(co2, "CO2" = monthly_average)
+
+bind_data <- bind_rows(vostok, co2)
+
+bind_data |> 
+  ggplot(aes(x = cal_year_k, y = CO2)) +
+  geom_line() +
+  labs(x = "Calendar Year (in 1000s of years)", y = "CO2 Levels (ppm)",
+       title = "CO2 levels measured in trapped ice and the air")
 
 ```
+CO2 levels in recent times are notably high in comparison to historical years. Even when comparing our spike in CO2 recently to past spikes, it is almost double the spike change as in previous events. Our current CO2 levels are double the general low levels, whereas in previous spikes, they generally change from ~200 ppm to ~300 ppm (1.5 times). This plot shows us that the rise in co2 levels are not consistent with past rises, in the amount of change, and also in the rate the CO2 rises. The raise in CO2 we are seeing currently has a much quicker rate of change than in past times.
 
 # Render and committing
 
 Remember to Render your document as HTML and comment+push to GitHub your code and rendered HTML that was created when you knitted the document.  Your GitHub repository should have multiple commits with informative commit messages.
 
 # Attribution
+
+I utilized the website "GeeksForGeeks" to help with question 6 which was found using the google search "how to calculate rolling average in r".
 
 Include citation of any AI-generated assistance or discussion with classmates (per policy in syllabus). Proper documentation of AI-generated assistance includes the prompt, the source (e.g., ChatGPT), and the significant parts of the response.  Proper documentation of discussion with classmates include listing their names and the components discussed.  
 
